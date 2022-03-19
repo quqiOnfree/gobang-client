@@ -13,7 +13,9 @@ import os
 import struct
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
+import model,sys
 
+globalist = sys.modules['__main__'].__dict__
 
 class receive_thread(QThread):
     # 接收信息系统，在连接之后才创建
@@ -160,26 +162,25 @@ class room_buttom():
             return False
 
 
-class thr(QThread):  # 异步检测
-    signal = pyqtSignal(bool)
+# class thr(QThread):  # 异步检测
+#     signal = pyqtSignal(bool)
 
-    def __init__(self, class_: Window, is_ai: bool = False) -> None:
-        super().__init__()
-        self.class_ = class_
-        self.is_ai = is_ai
+#     def __init__(self, is_ai: bool = False) -> None:
+#         super().__init__()
+#         self.is_ai = is_ai
 
-    def run(self):
-        while True:
-            if (self.class_.has_exit):
-                if (self.is_ai):
-                    self.signal.emit(True)
-                else:
-                    self.signal.emit(False)
-                return
-            time.sleep(0.01)
+#     def run(self):
+#         while True:
+#             if (globalist['modelGame'].has_exit):
+#                 if (self.is_ai):
+#                     self.signal.emit(True)
+#                 else:
+#                     self.signal.emit(False)
+#                 return
+#             time.sleep(0.01)
 
 
-class main_desk(Window):  # 主界面class
+class main_desk(model.BaceGame):  # 主界面class
     def __init__(self, soc: socket.socket, name: str, receive_system_: receive_thread):
         super().__init__(1000, 800, "曲奇五子棋")
         global username, s, receive_system
@@ -249,66 +250,44 @@ class main_desk(Window):  # 主界面class
             self.aiduizhan.update(1)
 
     def open(self, is_ai: bool):  # 接收信号之后调用的函数
-        self.set_visible(True)
-        self.game.close()
-        if (is_ai):
-            winner = self.game.winner
-        else:
-            winner = None
-        del self.game
-        set_window(self)
-        self.draw = True
-        if is_ai == True:
-            if (winner == 'black'):
-                sendmsg(json.dumps(
-                    {"add_ai_score": {"name": username}}, ensure_ascii=False).encode('gb18030'))
-                receivemsg()
-        while True:
-            sendmsg(json.dumps({"get_data": {"name": username}},
-                    ensure_ascii=False).encode('gb18030'))
-            self.user_data = json.loads(receivemsg().decode('gb18030'))
-            if (type(self.user_data) == type({})):
-                if ('get_data' in list(self.user_data.keys())):
-                    if('error' not in list(self.user_data['get_data'])):
-                        self.user_data = self.user_data['get_data']
-                        break
+        #self.set_visible(True)
+        # self.game.close()
+        # if (is_ai):
+        #     winner = self.game.winner
+        # else:
+        #     winner = None
+        # del self.game
+        # set_window(self)
+        # self.draw = True
+        # if is_ai == True:
+        #     if (winner == 'black'):
+        #         sendmsg(json.dumps(
+        #             {"add_ai_score": {"name": username}}, ensure_ascii=False).encode('gb18030'))
+        #         receivemsg()
+        # while True:
+        #     sendmsg(json.dumps({"get_data": {"name": username}},
+        #             ensure_ascii=False).encode('gb18030'))
+        #     self.user_data = json.loads(receivemsg().decode('gb18030'))
+        #     if (type(self.user_data) == type({})):
+        #         if ('get_data' in list(self.user_data.keys())):
+        #             if('error' not in list(self.user_data['get_data'])):
+        #                 self.user_data = self.user_data['get_data']
+        #                 break
+        pass
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
         # 鼠标点击事件
+        global globalist
         if (button == MOUSE_BUTTON_LEFT):
             if (self.duoren.on_move(x, y)):
                 self.draw = False
-                self.game = socket_desktop()
-                set_window(self.game)
-                loc = self.get_location()
-                self.game.set_location(loc[0], loc[1])
-                self.thr = thr(self.game)
-                self.thr.signal.connect(self.open)
-                self.thr.start()
-                self.game.set_visible(True)
-                self.set_visible(False)
+                globalist['modelGame'] = socket_desktop((s,username,receive_system))
             if (self.danren.on_move(x, y)):
                 self.draw = False
-                self.game = single_game.main_game(1000, 800, "曲奇五子棋", False)
-                loc = self.get_location()
-                self.game.set_location(loc[0], loc[1])
-                self.thr = thr(self.game)
-                self.thr.signal.connect(self.open)
-                self.thr.start()
-                self.game.set_visible(True)
-                self.set_visible(False)
+                globalist['modelGame'] = single_game.main_game(1000, 800, "曲奇五子棋",(s,username,receive_system))
             if (self.aiduizhan.on_move(x, y)):
                 self.draw = False
-                self.game = ai_game.ai_main_game(1000, 800, "曲奇五子棋", False)
-                loc = self.get_location()
-                self.game.set_location(loc[0], loc[1])
-                self.ai = ai_game.ai_system(self.game)
-                self.thr = thr(self.game, True)
-                self.thr.signal.connect(self.open)
-                self.thr.start()
-                self.game.set_visible(True)
-                self.set_visible(False)
-                self.ai.start()
+                globalist['modelGame'] = ai_game.ai_main_game(1000, 800, "曲奇五子棋",(s,username,receive_system), False)
 
 
 class get_room_data(QThread):
@@ -385,10 +364,13 @@ class socketroom_receive(QThread):
             time.sleep(0.01)
 
 
-class socket_room(Window):
-    def __init__(self):
+class socket_room(model.BaceGame):
+    def __init__(self,arr:list):
         super().__init__(1000, 800, '曲奇五子棋', visible=False)
+        self.width = 1000
+        self.height = 800
         self.setup()
+        self.arr = arr
 
     def setup(self):
         set_background_color(color.SKY_BLUE)
@@ -479,7 +461,8 @@ class socket_room(Window):
                     self.receive.msglist.clear()
                     receive_system.msglist.clear()
                 self.has_exit = True
-                self.close()
+                global globalist
+                globalist['modelGame'] = socket_desktop((self.arr[0],self.arr[1],self.arr[2]))
         if (self.receive.start_):
             self.update_chessboard += 1
             if (self.update_chessboard % 10 == 0):
@@ -622,10 +605,13 @@ class socket_room(Window):
                         "name": username, 'x': r, 'y': c}}, ensure_ascii=False).encode('gb18030'))
 
 
-class socket_desktop(Window):
-    def __init__(self):
+class socket_desktop(model.BaceGame):
+    def __init__(self,arr:list):
         super().__init__(1000, 800, "曲奇五子棋", visible=False)
         self.setup()
+        self.arr =arr
+        self.width = 1000
+        self.height = 800
 
     def setup(self):
         set_background_color(color.SKY_BLUE)
@@ -678,10 +664,7 @@ class socket_desktop(Window):
         pass
 
     def open(self, is_on: bool):
-        self.set_visible(True)
-        self.game.close()
-        del self.game
-        set_window(self)
+        #self.set_visible(True)
         self.can_draw = True
         del self.roomlist
         self.roomlist = []
@@ -699,22 +682,18 @@ class socket_desktop(Window):
                                                          './library/buttom/多人游戏框_2.png', './library/buttom/多人游戏框_3.png', 0.8, msg["get_room"][i]['roomname'], msg["get_room"][i]['hostname'], msg["get_room"][i]['state']))
 
     def success_create_room(self, msg: str):
-        self.game = socket_room()
-        loc = self.get_location()
-        self.game.set_location(loc[0], loc[1])
-        self.thr = thr(self.game)
-        self.thr.signal.connect(self.open)
-        self.thr.start()
+        global globalist
+        globalist['modelGame'] = socket_room((s,username,receive_system))
         if (msg != '[nohost]'):
-            self.game.host = True
-        self.game.set_visible(True)
-        self.set_visible(False)
+            globalist['modelGame'].host = True
+        #globalist['modelGame'].set_visible(True)
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
         if (button == MOUSE_BUTTON_LEFT):
             if (self.fanhui.on_move(x, y)):
                 self.has_exit = True
-                self.close()
+                global globalist
+                globalist['modelGame'] = main_desk(self.arr[0],self.arr[1],self.arr[2])
             if (self.chuangjian.on_move(x, y)):
                 self.can_draw = False
                 self.ui = createRoom()

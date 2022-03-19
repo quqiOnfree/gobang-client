@@ -2,15 +2,20 @@ import time
 from arcade import *
 import arcade.color as color
 from PyQt5.QtCore import QThread
-import desktop
+import desktop,sys,model
 
 
-class ai_main_game(Window):
-    def __init__(self, width: int, height: int, title: str, visible: bool = True, is_myself: bool = True, piece: str = "black"):
-        super().__init__(width, height, title, visible=visible)
+globalist = sys.modules['__main__'].__dict__
+
+class ai_main_game(model.BaceGame):
+    def __init__(self, width: int, height: int, title: str,arr:list, visible: bool = True, is_myself: bool = True, piece: str = "black"):
+        super().__init__(width, height, title, visible)
+        self.arr = arr
 
         self.piece = piece
         self.is_myself = is_myself
+        self.width = width
+        self.height = height
 
         self.set_up()
 
@@ -44,6 +49,9 @@ class ai_main_game(Window):
         self.grid = []  # 棋盘
         for i in range(self.grid_count):
             self.grid.append(list('.'*self.grid_count))
+        
+        self.ai = ai_system()
+        self.ai.start()
 
     def on_close(self):
         import os
@@ -186,7 +194,8 @@ class ai_main_game(Window):
         if (button == MOUSE_BUTTON_LEFT):
             if (self.fanhui2.on_move(x, y)):
                 self.has_exit = True
-                self.close()
+                global globalist
+                globalist['modelGame'] = desktop.main_desk(self.arr[0],self.arr[1],self.arr[2])
             if self.mouse_press_y == y and self.mouse_press_x == x:
                 self.handle_event((x, y))
             if (self.huiqi.on_move(x, y)):  # 检测悔棋
@@ -213,9 +222,8 @@ class ai_main_game(Window):
 
 
 class ai_system(QThread):
-    def __init__(self, window: ai_main_game):
+    def __init__(self):
         super().__init__()
-        self.window = window
 
     # 统计一个方向的同颜色棋子数量
     def get_continuous_count(self, r, c, dr, dc, piece: str, chessboard: list):
@@ -224,7 +232,7 @@ class ai_system(QThread):
         while True:
             new_r = r + dr * i
             new_c = c + dc * i
-            if 0 <= new_r < self.window.grid_count and 0 <= new_c < self.window.grid_count:
+            if 0 <= new_r < globalist['modelGame'].grid_count and 0 <= new_c < globalist['modelGame'].grid_count:
                 if chessboard[new_r][new_c] == piece:  # 该方向颜色相同则加上
                     result += 1
                 else:
@@ -240,8 +248,8 @@ class ai_system(QThread):
         while True:
             new_r = r + dr * i
             new_c = c + dc * i
-            if 0 <= new_r < self.window.grid_count and 0 <= new_c < self.window.grid_count:
-                if self.window.grid[new_r][new_c] != piece:  # 该方向颜色相同则加上
+            if 0 <= new_r < globalist['modelGame'].grid_count and 0 <= new_c < globalist['modelGame'].grid_count:
+                if globalist['modelGame'].grid[new_r][new_c] != piece:  # 该方向颜色相同则加上
                     if chessboard[new_r][new_c] != ".":
                         return False
                     else:
@@ -543,19 +551,19 @@ class ai_system(QThread):
 
     def run(self):
         while True:
-            if (self.window.has_exit):
+            if (globalist['modelGame'].has_exit):
                 return
             time.sleep(0.01)
-            if (self.window.piece == 'white'):
+            if (globalist['modelGame'].piece == 'white'):
                 scores = []
                 chessboard = []
-                for i in range(self.window.grid_count):
+                for i in range(globalist['modelGame'].grid_count):
                     chess = []
-                    for j in range(self.window.grid_count):
-                        chess.append(self.window.grid[i][j])
+                    for j in range(globalist['modelGame'].grid_count):
+                        chess.append(globalist['modelGame'].grid[i][j])
                     chessboard.append(chess)
-                for i in range(self.window.grid_count):
-                    for j in range(self.window.grid_count):
+                for i in range(globalist['modelGame'].grid_count):
+                    for j in range(globalist['modelGame'].grid_count):
                         if (chessboard[i][j] == '.'):
                             chessboard[i][j] = 'white'
                             scores.append(
@@ -565,16 +573,16 @@ class ai_system(QThread):
                 cancon = False
                 for i in range(len(scores[0][0][1])):
                     if (scores[0][0][1][i][0]=="白连5"):
-                        if (self.window.set_piece(scores[0][1], scores[0][2])):
-                            self.window.check_win(scores[0][1], scores[0][2])
+                        if (globalist['modelGame'].set_piece(scores[0][1], scores[0][2])):
+                            globalist['modelGame'].check_win(scores[0][1], scores[0][2])
                             cancon = True
                             break
                     if (scores[0][0][1][i][0]=="白活4"):
-                        if (self.window.set_piece(scores[0][0][1][i][1], scores[0][0][1][i][2])):
-                            self.window.check_win(scores[0][0][1][i][1], scores[0][0][1][i][2])
+                        if (globalist['modelGame'].set_piece(scores[0][0][1][i][1], scores[0][0][1][i][2])):
+                            globalist['modelGame'].check_win(scores[0][0][1][i][1], scores[0][0][1][i][2])
                             cancon = True
                             break
                 if (cancon):
                     continue
-                if (self.window.set_piece(scores[0][1], scores[0][2])):
-                    self.window.check_win(scores[0][1], scores[0][2])
+                if (globalist['modelGame'].set_piece(scores[0][1], scores[0][2])):
+                    globalist['modelGame'].check_win(scores[0][1], scores[0][2])

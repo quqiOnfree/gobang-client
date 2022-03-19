@@ -1,15 +1,22 @@
+from array import array
+import model
 from arcade import *
 import arcade.color as color
 
-import desktop
+import desktop,sys
+
+globalist = sys.modules['__main__'].__dict__
 
 
-class main_game(Window):
-    def __init__(self, width: int, height: int, title: str, visible: bool = True, is_myself: bool = True, piece: str = "black"):
+class main_game(model.BaceGame):
+    def __init__(self, width: int, height: int, title: str,arr:list, visible: bool = True, is_myself: bool = True, piece: str = "black"):
         super().__init__(width, height, title, visible=visible)
 
         self.piece = piece
         self.is_myself = is_myself
+        self.width = width
+        self.height = height
+        self.arr = arr
 
         self.set_up()
 
@@ -183,7 +190,8 @@ class main_game(Window):
         if (button == MOUSE_BUTTON_LEFT):
             if (self.fanhui2.on_move(x, y)):
                 self.has_exit = True
-                self.close()
+                global globalist
+                globalist['modelGame'] = desktop.main_desk(self.arr[0],self.arr[1],self.arr[2])
             if self.mouse_press_y == y and self.mouse_press_x == x:
                 self.handle_event((x, y))
             if (self.huiqi.on_move(x, y)):  # 检测悔棋

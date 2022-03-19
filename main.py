@@ -14,6 +14,7 @@ import sys
 import os
 import struct
 import json
+import model
 
 WIDTH = 1000
 HEIGHT = 800
@@ -24,6 +25,39 @@ PORT = 11451
 
 # 全局socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+globalist = sys.modules['__main__'].__dict__
+globalist['modelGame'] = model.BaceGame()
+
+
+class ArcGame(Window):
+    def __init__(self, width: int = 800, height: int = 600, title: str = 'Arcade Window', can_draw: bool = True):
+        super().__init__(width, height, title)
+        self.can_draw = can_draw
+
+    def on_draw(self):
+        if self.can_draw:
+            globalist['modelGame'].on_draw()
+
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
+        if self.can_draw:
+            globalist['modelGame'].on_mouse_motion(x, y, dx, dy)
+
+    def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
+        if self.can_draw:
+            globalist['modelGame'].on_mouse_release(x, y, button, modifiers)
+
+    def on_update(self, delta_time: float):
+        if self.can_draw:
+            globalist['modelGame'].on_update(delta_time)
+
+    def on_mouse_scroll(self, x: int, y: int, scroll_x: int, scroll_y: int):
+        if self.can_draw:
+            globalist['modelGame'].on_mouse_scroll(x, y, scroll_x, scroll_y)
+
+    def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        if self.can_draw:
+            globalist['modelGame'].on_mouse_press(x, y, button, modifiers)
 
 
 class receive_thread(QThread):
@@ -231,9 +265,11 @@ class login_class(Ui_login, QWidget):
         else:
             with open('./library/data/password.json', 'w') as f:
                 json.dump({"is_on": True, "username": '', 'password': ''}, f)
-        self.game_ = main_desk(s, username, receive_system)
+        # self.game_ = main_desk(s, username, receive_system)
+        self.game = ArcGame(WIDTH, HEIGHT, TITLE)
+        global globalist
+        globalist['modelGame'] = main_desk(s, username, receive_system)
         self.close()
-        # sip.delete(self)
         run()
 
     def register(self):
